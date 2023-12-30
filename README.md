@@ -1,0 +1,2 @@
+# devlocator_batch
+DevLocatorのバッチ処理リポジトリ
