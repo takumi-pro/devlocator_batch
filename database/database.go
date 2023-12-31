@@ -9,7 +9,6 @@ import (
 )
 
 func DBConnect() (*sql.DB, error) {
-	// TODO: 環境変数から取得
 	err := godotenv.Load(".env")
 	if err != nil {
 		fmt.Println("Error loading .env file")
@@ -37,5 +36,6 @@ func DBConnect() (*sql.DB, error) {
 		return nil, err
 	}
 
+	fmt.Println("database connected!")
 	return db, nil
 }

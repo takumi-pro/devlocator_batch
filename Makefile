@@ -2,7 +2,7 @@ REGION=asia-northeast1
 IMAGE=$(REGION)-docker.pkg.dev/sigma-method-409207/devlocator-batch/devlocator_batch
 
 image-build:
-	docker image build -t $(IMAGE):latest --target production --platform linux/amd64 -f docker/Dockerfile .
+	docker image build -t $(IMAGE):latest --no-cache --target production --platform linux/amd64 -f docker/Dockerfile .
 
 image-push:
 	docker image push $(IMAGE):latest

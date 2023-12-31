@@ -9,11 +9,13 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const (
-	MAX_EVENTS_PER_REQUEST   = 10
-	EVENT_INDEX_INCREMENT    = 10
+	MAX_EVENTS_PER_REQUEST   = 100
+	EVENT_INDEX_INCREMENT    = 100
 	REQUEST_INTERVAL_SECONDS = 6
 )
 
@@ -28,29 +30,16 @@ func main() {
 	}
 	defer db.Close()
 
-	tx, err := db.Begin()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-	defer func() {
-		if p := recover(); p != nil {
-			tx.Rollback()
-			panic(p)
-		} else if err != nil {
-			tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	if err := deleteEvents(tx); err != nil {
+	if err := deleteEventsTransaction(db); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
+	beforeRequestTime := time.Now()
 	startIndex := 1
 	for {
+		d := (time.Now()).Sub(beforeRequestTime).Seconds()
+		fmt.Printf("time duration: %v\n", d)
 		eventsResponse, err := getEvents(stringDates, startIndex, MAX_EVENTS_PER_REQUEST)
 		if err != nil {
 			fmt.Println(err.Error())
@@ -61,7 +50,7 @@ func main() {
 			break
 		}
 
-		if err := insertEvents(tx, eventsResponse.Events); err != nil {
+		if err := insertEventsTransaction(db, eventsResponse.Events); err != nil {
 			fmt.Println(err.Error())
 			return
 		}
@@ -127,12 +116,41 @@ func getEvents(date string, startIndex int, count int) (models.EventsResponse, e
 	return connpassApi, nil
 }
 
+func deleteEventsTransaction(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := deleteEvents(tx); err != nil {
+		return err
+	}
+
+	fmt.Println("deleted!")
+	return tx.Commit()
+}
+
 func deleteEvents(tx *sql.Tx) error {
 	sqlStr := `DELETE FROM events;`
 	if _, err := tx.Exec(sqlStr); err != nil {
 		return err
 	}
 	return nil
+}
+
+func insertEventsTransaction(db *sql.DB, events []models.Event) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if err := insertEvents(tx, events); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func insertEvents(tx *sql.Tx, events []models.Event) error {
